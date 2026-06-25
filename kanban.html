@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Projeto — Kanban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --dk-bg:        #0f1117;
+  --dk-surface:   #1a1d27;
+  --dk-card:      #21253a;
+  --dk-border:    rgba(255,255,255,0.07);
+  --dk-border-md: rgba(255,255,255,0.13);
+  --dk-text:      #e8eaf0;
+  --dk-muted:     #7b8099;
+  --dk-hover:     #252a3d;
+  --dk-accent:    #378ADD;
+  --font: 'DM Sans', system-ui, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--dk-bg);
+  color: var(--dk-text);
+  font-family: var(--font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* ── Top bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 52px;
+  border-bottom: 0.5px solid var(--dk-border);
+  background: var(--dk-surface);
+  flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.logo { width: 28px; height: 28px; background: var(--dk-accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; }
+.project-name { font-size: 15px; font-weight: 500; color: var(--dk-text); }
+.project-name span { color: var(--dk-muted); font-weight: 400; }
+.stats { display: flex; gap: 10px; }
+.stat { font-size: 12px; color: var(--dk-muted); display: flex; align-items: center; gap: 4px; }
+.stat i { font-size: 14px; }
+
+/* ── Filters ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-bottom: 0.5px solid var(--dk-border);
+  background: var(--dk-surface);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.filter-label { font-size: 12px; color: var(--dk-muted); margin-right: 2px; }
+.filter-btn {
+  font-size: 12px; padding: 4px 11px; border-radius: 99px;
+  border: 0.5px solid var(--dk-border-md); background: none;
+  cursor: pointer; color: var(--dk-muted); font-family: var(--font);
+  transition: all 0.12s; display: flex; align-items: center; gap: 5px;
+}
+.filter-btn:hover { background: var(--dk-hover); color: var(--dk-text); }
+.filter-btn.active { border-width: 1.5px; }
+.filter-btn.f-all.active    { background: var(--dk-hover); color: var(--dk-text); border-color: rgba(255,255,255,0.25); }
+.filter-btn.f-urgent.active { background: rgba(226,75,74,0.15);  color: #f87171; border-color: rgba(226,75,74,0.5); }
+.filter-btn.f-high.active   { background: rgba(239,159,39,0.13); color: #fbbf24; border-color: rgba(239,159,39,0.45); }
+.filter-btn.f-medium.active { background: rgba(55,138,221,0.13); color: #60a5fa; border-color: rgba(55,138,221,0.45); }
+.filter-btn.f-low.active    { background: rgba(99,153,34,0.13);  color: #86efac; border-color: rgba(99,153,34,0.45); }
+.pri-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Board ── */
+.board-wrap {
+  flex: 1;
+  overflow-x: auto;
+  padding: 20px 24px 28px;
+}
+.board-wrap::-webkit-scrollbar { height: 5px; }
+.board-wrap::-webkit-scrollbar-track { background: transparent; }
+.board-wrap::-webkit-scrollbar-thumb { background: var(--dk-border-md); border-radius: 99px; }
+
+.board {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: calc(100vh - 130px);
+}
+
+/* ── Column ── */
+.col {
+  flex: 0 0 230px;
+  background: var(--dk-surface);
+  border-radius: 12px;
+  border: 0.5px solid var(--dk-border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 100px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.col.drag-over { background: rgba(55,138,221,0.08); border-color: rgba(55,138,221,0.35); }
+.col-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 2px 8px;
+  border-bottom: 0.5px solid var(--dk-border);
+  margin-bottom: 1px;
+}
+.col-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--dk-text); }
+.col-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.col-count {
+  font-size: 11px; color: var(--dk-muted);
+  background: rgba(255,255,255,0.05); border: 0.5px solid var(--dk-border);
+  border-radius: 99px; padding: 0 7px; height: 17px;
+  display: flex; align-items: center;
+}
+.col-add-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--dk-muted); font-size: 17px; padding: 0;
+  display: flex; align-items: center; transition: color 0.15s;
+}
+.col-add-btn:hover { color: var(--dk-text); }
+
+/* ── Card ── */
+.card {
+  background: var(--dk-card);
+  border: 0.5px solid var(--dk-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: grab;
+  user-select: none;
+  transition: border-color 0.12s, opacity 0.12s;
+  position: relative;
+}
+.card:hover { border-color: var(--dk-border-md); }
+.card:active { cursor: grabbing; }
+.card.dragging { opacity: 0.35; }
+.card.hidden { display: none; }
+
+.card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.pri-badge {
+  font-size: 10px; font-weight: 500;
+  padding: 2px 8px; border-radius: 99px;
+  display: flex; align-items: center; gap: 4px;
+}
+.pri-urgent { background: rgba(226,75,74,0.18);  color: #f87171; }
+.pri-high   { background: rgba(239,159,39,0.15); color: #fbbf24; }
+.pri-medium { background: rgba(55,138,221,0.15); color: #60a5fa; }
+.pri-low    { background: rgba(99,153,34,0.13);  color: #86efac; }
+
+.card-actions { display: none; gap: 2px; }
+.card:hover .card-actions { display: flex; }
+.card-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--dk-muted); padding: 2px; font-size: 14px;
+  border-radius: 4px; display: flex; align-items: center;
+  transition: color 0.12s, background 0.12s;
+}
+.card-btn:hover { color: #f87171; background: rgba(226,75,74,0.15); }
+
+.card-title { font-size: 13px; font-weight: 400; color: var(--dk-text); line-height: 1.45; margin-bottom: 7px; }
+.card-meta  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 99px; }
+.tag-blue   { background: rgba(55,138,221,0.18);  color: #60a5fa; }
+.tag-green  { background: rgba(99,153,34,0.15);   color: #86efac; }
+.tag-amber  { background: rgba(239,159,39,0.15);  color: #fbbf24; }
+.tag-purple { background: rgba(127,119,221,0.18); color: #a5b4fc; }
+.tag-pink   { background: rgba(212,83,126,0.15);  color: #f9a8d4; }
+
+.avatar {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 500; flex-shrink: 0; margin-left: auto;
+}
+.av-a { background: rgba(55,138,221,0.25);  color: #60a5fa; }
+.av-b { background: rgba(29,158,117,0.25);  color: #6ee7b7; }
+.av-c { background: rgba(212,83,126,0.22);  color: #f9a8d4; }
+.av-d { background: rgba(239,159,39,0.20);  color: #fbbf24; }
+
+/* ── Add card button ── */
+.add-card-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--dk-muted);
+  background: none; border: none; cursor: pointer;
+  padding: 5px 2px; border-radius: 6px;
+  transition: color 0.12s, background 0.12s;
+  width: 100%; font-family: var(--font);
+}
+.add-card-btn:hover { color: var(--dk-text); background: var(--dk-hover); }
+
+/* ── Forms ── */
+.new-card-form {
+  background: var(--dk-hover);
+  border: 0.5px solid var(--dk-border-md);
+  border-radius: 8px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.new-card-form input,
+.new-card-form select {
+  width: 100%; font-size: 13px;
+  border: 0.5px solid var(--dk-border-md); border-radius: 6px;
+  padding: 6px 8px;
+  background: var(--dk-card); color: var(--dk-text);
+  outline: none; font-family: var(--font);
+}
+.new-card-form input:focus,
+.new-card-form select:focus { border-color: rgba(55,138,221,0.5); }
+.new-card-form select option { background: var(--dk-card); color: var(--dk-text); }
+
+.form-row { display: flex; gap: 4px; }
+.form-btn {
+  flex: 1; font-size: 12px; padding: 5px; border-radius: 6px;
+  cursor: pointer; border: 0.5px solid var(--dk-border-md);
+  font-family: var(--font); transition: background 0.12s;
+}
+.form-btn.primary { background: var(--dk-accent); color: #fff; border-color: transparent; }
+.form-btn.primary:hover { background: #2a73c5; }
+.form-btn.cancel  { background: none; color: var(--dk-muted); }
+.form-btn.cancel:hover { background: var(--dk-border); color: var(--dk-text); }
+
+/* ── Add column ── */
+.add-col-area {
+  flex: 0 0 200px;
+  border: 1.5px dashed var(--dk-border-md);
+  border-radius: 12px; padding: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 80px;
+}
+.add-col-area:hover { border-color: rgba(255,255,255,0.2); background: var(--dk-surface); }
+.add-col-area span { font-size: 13px; color: var(--dk-muted); display: flex; align-items: center; gap: 6px; }
+
+.new-col-form {
+  flex: 0 0 200px;
+  background: var(--dk-surface);
+  border-radius: 12px; border: 0.5px solid var(--dk-border-md);
+  padding: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.new-col-form input {
+  font-size: 13px; border: 0.5px solid var(--dk-border-md); border-radius: 6px;
+  padding: 6px 8px; background: var(--dk-card); color: var(--dk-text);
+  outline: none; font-family: var(--font);
+}
+
+/* ── Empty state ── */
+.empty-col { font-size: 12px; color: var(--dk-muted); text-align: center; padding: 12px 0; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo"><i class="ti ti-layout-kanban"></i></div>
+    <div class="project-name">Meu Projeto <span>/ Board</span></div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<!-- Filter toolbar -->
+<div class="toolbar">
+  <span class="filter-label">Prioridade:</span>
+  <button class="filter-btn f-all active"    onclick="setFilter('all')">Todas</button>
+  <button class="filter-btn f-urgent" onclick="setFilter('urgent')"><span class="pri-dot" style="background:#f87171"></span>Urgente</button>
+  <button class="filter-btn f-high"   onclick="setFilter('high')"><span class="pri-dot" style="background:#fbbf24"></span>Alta</button>
+  <button class="filter-btn f-medium" onclick="setFilter('medium')"><span class="pri-dot" style="background:#60a5fa"></span>Média</button>
+  <button class="filter-btn f-low"    onclick="setFilter('low')"><span class="pri-dot" style="background:#86efac"></span>Baixa</button>
+</div>
+
+<!-- Board -->
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+
+<script>
+const COL_COLORS  = ['#6B7280','#378ADD','#BA7511','#639922','#7F77DD','#D85A30'];
+const TAG_CLASSES = ['tag-blue','tag-green','tag-amber','tag-purple','tag-pink'];
+const AVATARS     = [{i:'AM',c:'av-a'},{i:'BJ',c:'av-b'},{i:'CR',c:'av-c'},{i:'DK',c:'av-d'}];
+const PRIORITIES  = [
+  {id:'urgent',label:'Urgente',badge:'pri-urgent',dot:'#f87171'},
+  {id:'high',  label:'Alta',   badge:'pri-high',  dot:'#fbbf24'},
+  {id:'medium',label:'Média',  badge:'pri-medium', dot:'#60a5fa'},
+  {id:'low',   label:'Baixa',  badge:'pri-low',   dot:'#86efac'},
+];
+
+const STORAGE_KEY = 'kanban_state_v1';
+
+const DEFAULT_STATE = {
+  cols:[
+    {id:'c1',name:'A fazer',color:'#6B7280',cards:[
+      {id:'k1',title:'Pesquisar concorrentes',tag:'Pesquisa',tagCls:'tag-blue',avatar:0,priority:'medium'},
+      {id:'k2',title:'Definir personas de usuário',tag:'UX',tagCls:'tag-purple',avatar:1,priority:'high'},
+      {id:'k3',title:'Corrigir bug no login',tag:'Dev',tagCls:'tag-green',avatar:2,priority:'urgent'},
+      {id:'k9',title:'Atualizar dependências',tag:'Dev',tagCls:'tag-green',avatar:3,priority:'low'},
+    ]},
+    {id:'c2',name:'Em progresso',color:'#378ADD',cards:[
+      {id:'k4',title:'Wireframes da tela inicial',tag:'Design',tagCls:'tag-pink',avatar:3,priority:'high'},
+      {id:'k5',title:'API de autenticação',tag:'Dev',tagCls:'tag-green',avatar:0,priority:'urgent'},
+    ]},
+    {id:'c3',name:'Revisão',color:'#BA7511',cards:[
+      {id:'k6',title:'Revisão do pitch deck',tag:'Produto',tagCls:'tag-amber',avatar:1,priority:'medium'},
+    ]},
+    {id:'c4',name:'Concluído',color:'#639922',cards:[
+      {id:'k7',title:'Kickoff com o cliente',tag:'Reunião',tagCls:'tag-blue',avatar:2,priority:'low'},
+      {id:'k8',title:'Setup do ambiente',tag:'Dev',tagCls:'tag-green',avatar:3,priority:'medium'},
+    ]},
+  ]
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // strip UI-only flags that shouldn't persist
+      parsed.cols.forEach(c => { delete c._addingCard; });
+      delete parsed._addingCol;
+      return parsed;
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
+function saveState() {
+  try {
+    const toSave = {
+      cols: state.cols.map(c => ({
+        id: c.id, name: c.name, color: c.color,
+        cards: c.cards.map(k => ({...k}))
+      }))
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch(e) {}
+}
+
+let activeFilter = 'all';
+let state = loadState();
+
+let dragCard=null, dragCol=null;
+function uid(){return 'k'+Math.random().toString(36).slice(2,8);}
+function cuid(){return 'c'+Math.random().toString(36).slice(2,8);}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function setFilter(f){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.filter-btn.f-'+f).classList.add('active');
+  applyFilter(); renderStats();
+}
+
+function applyFilter(){
+  document.querySelectorAll('.card').forEach(el=>{
+    el.classList.toggle('hidden', activeFilter!=='all' && el.dataset.priority!==activeFilter);
+  });
+  document.querySelectorAll('.col').forEach(colEl=>{
+    const visible=colEl.querySelectorAll('.card:not(.hidden)').length;
+    let empty=colEl.querySelector('.empty-col');
+    const hasForm=!!colEl.querySelector('.new-card-form');
+    if(activeFilter!=='all'&&visible===0&&!hasForm){
+      if(!empty){empty=document.createElement('div');empty.className='empty-col';empty.textContent='Nenhuma tarefa';colEl.insertBefore(empty,colEl.querySelector('.add-card-btn'));}
+    } else { if(empty)empty.remove(); }
+  });
+}
+
+function renderStats(){
+  const el=document.getElementById('stats');
+  const c={urgent:0,high:0,medium:0,low:0};
+  state.cols.forEach(col=>col.cards.forEach(k=>{if(c[k.priority]!==undefined)c[k.priority]++;}));
+  const total=Object.values(c).reduce((a,b)=>a+b,0);
+  el.innerHTML=`
+    <div class="stat"><i class="ti ti-layout-kanban"></i>${state.cols.length} colunas</div>
+    <div class="stat"><i class="ti ti-checklist"></i>${total} tarefas</div>
+    <div class="stat"><span class="pri-dot" style="background:#f87171;display:inline-block"></span>${c.urgent} urgente${c.urgent!==1?'s':''}</div>
+    <div class="stat"><span class="pri-dot" style="background:#fbbf24;display:inline-block"></span>${c.high} alta${c.high!==1?'s':''}</div>`;
+}
+
+function renderPri(p){
+  const pr=PRIORITIES.find(x=>x.id===p)||PRIORITIES[2];
+  return `<span class="pri-badge ${pr.badge}"><span class="pri-dot" style="background:${pr.dot}"></span>${pr.label}</span>`;
+}
+
+function renderCard(card,colId){
+  const av=AVATARS[card.avatar%4];
+  return `<div class="card" draggable="true" data-card="${card.id}" data-col="${colId}" data-priority="${card.priority}">
+    <div class="card-top">${renderPri(card.priority)}<div class="card-actions"><button class="card-btn" onclick="deleteCard('${colId}','${card.id}')" aria-label="Remover"><i class="ti ti-x"></i></button></div></div>
+    <div class="card-title">${esc(card.title)}</div>
+    <div class="card-meta">${card.tag?`<span class="tag ${card.tagCls}">${esc(card.tag)}</span>`:''}<div class="avatar ${av.c}">${av.i}</div></div>
+  </div>`;
+}
+
+function renderForm(colId){
+  const opts=PRIORITIES.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+  return `<div class="new-card-form" id="form-${colId}">
+    <input type="text" placeholder="Título da tarefa..." id="inp-${colId}" maxlength="80" onkeydown="formKey(event,'${colId}')">
+    <select id="pri-${colId}">${opts}</select>
+    <div class="form-row">
+      <button class="form-btn primary" onclick="saveCard('${colId}')">Adicionar</button>
+      <button class="form-btn cancel" onclick="cancelForm('${colId}')">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function renderCol(col){
+  return `<div class="col" id="${col.id}" data-col="${col.id}">
+    <div class="col-header">
+      <div class="col-label"><span class="col-dot" style="background:${col.color}"></span><span>${esc(col.name)}</span><span class="col-count">${col.cards.length}</span></div>
+      <button class="col-add-btn" onclick="showAddCard('${col.id}')" aria-label="Adicionar tarefa"><i class="ti ti-plus"></i></button>
+    </div>
+    ${col.cards.map(c=>renderCard(c,col.id)).join('')}
+    ${col._addingCard?renderForm(col.id):''}
+    ${!col._addingCard?`<button class="add-card-btn" onclick="showAddCard('${col.id}')"><i class="ti ti-plus"></i> Adicionar tarefa</button>`:''}
+  </div>`;
+}
+
+function renderAddColArea(){
+  if(state._addingCol) return `<div class="new-col-form"><input type="text" placeholder="Nome da coluna..." id="col-inp" maxlength="40" onkeydown="colFormKey(event)"><div class="form-row"><button class="form-btn primary" onclick="saveCol()">Criar</button><button class="form-btn cancel" onclick="cancelCol()">Cancelar</button></div></div>`;
+  return `<div class="add-col-area" onclick="showAddCol()"><span><i class="ti ti-plus"></i> Nova coluna</span></div>`;
+}
+
+function render(){
+  const board=document.getElementById('board');
+  board.innerHTML=state.cols.map(renderCol).join('')+renderAddColArea();
+  renderStats(); applyFilter(); attachDrag();
+  state.cols.forEach(col=>{if(col._addingCard){const i=document.getElementById('inp-'+col.id);if(i)i.focus();}});
+  if(state._addingCol){const i=document.getElementById('col-inp');if(i)i.focus();}
+}
+
+function showAddCard(colId){state.cols.forEach(c=>c._addingCard=(c.id===colId));render();}
+function cancelForm(colId){const c=state.cols.find(x=>x.id===colId);if(c)c._addingCard=false;render();}
+function saveCard(colId){
+  const inp=document.getElementById('inp-'+colId);
+  const pri=document.getElementById('pri-'+colId);
+  const title=inp?inp.value.trim():'';
+  if(!title)return;
+  const col=state.cols.find(c=>c.id===colId);
+  if(!col)return;
+  col.cards.push({id:uid(),title,tag:'',tagCls:TAG_CLASSES[Math.floor(Math.random()*TAG_CLASSES.length)],avatar:Math.floor(Math.random()*4),priority:pri?pri.value:'medium'});
+  col._addingCard=false; render();
+}
+function formKey(e,colId){if(e.key==='Enter')saveCard(colId);if(e.key==='Escape')cancelForm(colId);}
+function deleteCard(colId,cardId){const c=state.cols.find(x=>x.id===colId);if(c)c.cards=c.cards.filter(x=>x.id!==cardId);render();}
+function showAddCol(){state._addingCol=true;render();}
+function cancelCol(){state._addingCol=false;render();}
+function saveCol(){
+  const inp=document.getElementById('col-inp');
+  const name=inp?inp.value.trim():'';
+  if(!name)return;
+  state.cols.push({id:cuid(),name,color:COL_COLORS[state.cols.length%COL_COLORS.length],cards:[]});
+  state._addingCol=false; render();
+}
+function colFormKey(e){if(e.key==='Enter')saveCol();if(e.key==='Escape')cancelCol();}
+
+function attachDrag(){
+  document.querySelectorAll('.card').forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      dragCard=e.currentTarget.dataset.card; dragCol=e.currentTarget.dataset.col;
+      e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move';
+    });
+    card.addEventListener('dragend',e=>{
+      e.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.col').forEach(c=>c.classList.remove('drag-over'));
+    });
+  });
+  document.querySelectorAll('.col').forEach(col=>{
+    col.addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('drag-over');});
+    col.addEventListener('dragleave',e=>e.currentTarget.classList.remove('drag-over'));
+    col.addEventListener('drop',e=>{
+      e.preventDefault(); const tId=e.currentTarget.dataset.col; e.currentTarget.classList.remove('drag-over');
+      if(!dragCard||!dragCol||dragCol===tId)return;
+      const src=state.cols.find(c=>c.id===dragCol), tgt=state.cols.find(c=>c.id===tId);
+      if(!src||!tgt)return;
+      const idx=src.cards.findIndex(c=>c.id===dragCard); if(idx===-1)return;
+      const [card]=src.cards.splice(idx,1); tgt.cards.push(card); render();
+    });
+  });
+}
+
+render();
+</script>
+</body>
+</html>
